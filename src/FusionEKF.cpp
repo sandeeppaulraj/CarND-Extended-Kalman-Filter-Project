@@ -52,13 +52,11 @@ FusionEKF::FusionEKF() {
 
 	H_laser_ << 1, 0, 0, 0,
 				0, 1, 0, 0;
-				  
-	Hj_ << 1, 1, 0, 0,
-			1, 1, 0, 0,
-			1, 1, 1, 1;
 
-	noise_ax = 9;
-	noise_ay = 9;			
+    VectorXd x_ = VectorXd(4);
+
+   	noise_ax = 9.0;
+    noise_ay = 9.0;
 }
 
 /**
@@ -88,18 +86,23 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
       /**
       Convert radar from polar to cartesian coordinates and initialize state.
       */
-		float ro     = measurement_pack.raw_measurements_(0);
+		float rho     = measurement_pack.raw_measurements_(0);
 		float phi    = measurement_pack.raw_measurements_(1);
-		float ro_dot = measurement_pack.raw_measurements_(2);
-		ekf_.x_(0) = ro     * cos(phi);
-		ekf_.x_(1) = ro     * sin(phi);      
-		ekf_.x_(2) = ro_dot * cos(phi);
-		ekf_.x_(3) = ro_dot * sin(phi);
+		float rho_dot = measurement_pack.raw_measurements_(2);
+		
+		float x = rho * cos(phi);
+		float y = rho * sin(phi);
+		float vx = rho_dot * cos(phi);
+		float vy = rho_dot * sin(phi);
+		
+		ekf_.x_ << x, y, vx , vy;
     }
     else if (measurement_pack.sensor_type_ == MeasurementPackage::LASER) {
 		ekf_.x_ << measurement_pack.raw_measurements_[0], measurement_pack.raw_measurements_[1], 0, 0;
     }
-
+	
+	previous_timestamp_ = measurement_pack.timestamp_;
+	
     // done initializing, no need to predict or update
     is_initialized_ = true;
     return;
@@ -118,7 +121,6 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
    */
 	float dt = (measurement_pack.timestamp_ - previous_timestamp_) / 1000000.0;	//dt - expressed in seconds
 	previous_timestamp_ = measurement_pack.timestamp_;
-
 	float dt_2 = dt * dt;
 	float dt_3 = dt_2 * dt;
 	float dt_4 = dt_3 * dt;
